@@ -6,22 +6,15 @@ import (
 	"net/http"
 )
 
-type Wstr string
-
-func (s Wstr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from barFunc: %s", s)
+func helloWorld(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello cruel, curel, world!")
 }
 
-// If ListenAndServe has nil as the Handler, then it uses http.DefaultServeMux.
-// http.Handle and http.HandleFunc register their Handlers with http.DefaultServeMux.
-
 func main() {
-	// note that localhost:8080/bar goes here
-	http.Handle("/bar", Wstr("barbarbar"))
-
-	//  while everything else goes here.
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello World!, from the HandleFunc")
-	})
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// creating a http.Server ourselves gives us more control over the server, like timeouts, TLS, and logger.
+	s := &http.Server{
+		Addr:    ":8080",
+		Handler: http.HandlerFunc(helloWorld),
+	}
+	log.Fatal(s.ListenAndServe())
 }
