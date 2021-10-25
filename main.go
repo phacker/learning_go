@@ -8,7 +8,8 @@ import (
 
 func logging(f http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.URL.Path)
+		log.Printf("before: %v\n", r.URL.Path)
+		defer log.Println("after logging")
 		f(w, r)
 	}
 }
