@@ -6,25 +6,45 @@ import (
 	"net/http"
 )
 
-func logging(f http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("before: %v\n", r.URL.Path)
-		defer log.Println("after logging")
-		f(w, r)
+type Middleware func(http.HandlerFunc) http.HandlerFunc
+
+// LogReqeusts prints r.URL.Path to stdout
+func LogRequest() Middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("%v\n", r.URL.Path)
+			f(w, r)
+		}
 	}
 }
 
-func hello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "hello")
+// Method returns StatusBadRequest unless the method matches s.
+func Method(s string) Middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != s {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			}
+			f(w, r)
+		}
+	}
 }
 
-func world(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "world")
+// Chain applies middlewares in reverse order to f
+func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
+	for _, m := range middlewares {
+		f = m(f)
+	}
+	return f
+}
+
+func hello(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello\n")
 }
 
 func main() {
 	m := http.NewServeMux()
-	m.HandleFunc("/hello/", logging(hello))
-	m.HandleFunc("/world/", logging(world))
+	m.HandleFunc("/", Chain(hello, Method("GET"), LogRequest()))
 	log.Fatal(http.ListenAndServe(":8080", m))
 }
